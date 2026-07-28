@@ -29,6 +29,7 @@ jobs:
         continue-on-error: true
       - name: Skorda regeringen.se
         # run: python scripts/harvest_regeringen.py
+        run: echo "Regeringen.se-skorden pausad tills vidare"
         continue-on-error: true
       - name: Skorda Statsliggaren
         run: python scripts/harvest_statsliggaren.py
