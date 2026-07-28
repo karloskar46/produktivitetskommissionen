@@ -1,0 +1,53 @@
+name: Uppdatera Produktivitetskommissionen.se
+
+on:
+  schedule:
+    - cron: "0 3 * * 3,6"
+  workflow_dispatch:
+  push:
+    paths:
+      - "data/kalla/forslag.xlsx"
+
+permissions:
+  contents: write
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: "pip"
+      - run: pip install -r requirements.txt
+      - name: Bygg proposals.json
+        run: python scripts/build_proposals.py
+      - name: Skorda Riksdagen
+        run: python scripts/harvest_riksdagen.py
+        continue-on-error: true
+      - name: Skorda regeringen.se
+        run: python scripts/harvest_regeringen.py
+        continue-on-error: true
+      - name: Skorda Statsliggaren
+        run: python scripts/harvest_statsliggaren.py
+        continue-on-error: true
+      - name: Klassificera nya kallor
+        env:
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+        run: python scripts/classify.py
+        continue-on-error: true
+      - name: Bygg sajten
+        run: python scripts/build_site.py
+      - name: Spara andringar
+        run: |
+          git config user.name  "produktivitetskommissionen-bot"
+          git config user.email "bot@produktivitetskommissionen.se"
+          git add data/ site/
+          if ! git diff --cached --quiet; then
+            git commit -m "Uppdatering $(date +%Y-%m-%d)"
+            git push
+          else
+            echo "Inga andringar att spara"
+          fi
