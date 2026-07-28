@@ -45,7 +45,7 @@ jobs:
         run: |
           git config user.name  "produktivitetskommissionen-bot"
           git config user.email "bot@produktivitetskommissionen.se"
-          git add data/ site/
+          git add data/ docs/
           if ! git diff --cached --quiet; then
             git commit -m "Uppdatering $(date +%Y-%m-%d)"
             git push
