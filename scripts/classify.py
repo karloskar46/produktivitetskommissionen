@@ -187,12 +187,12 @@ def main():
     p_by_id = {p["id"]: p for p in proposals}
     nya_kallor = [k for k in kallor if k["id"] not in redan_klassade]
     print(f"[i] Nya kallor: {len(nya_kallor)}")
-    MAX = 800
+    MAX = 50
     if len(nya_kallor) > MAX:
         nya_kallor = nya_kallor[:MAX]
     antal = 0
     for i, kalla in enumerate(nya_kallor, 1):
-        if i % 20 == 0:
+        if i % 5 == 0:
             print(f"  ... {i}/{len(nya_kallor)} ({antal} matchningar)")
         kandidater = hitta_kandidater(kalla, proposals, n=8)
         if not kandidater:
