@@ -90,28 +90,58 @@ def dok_id(url):
 
 
 def parsa_rss(xml_text):
+    """Parsa RSS/Atom. Om XML-parsern misslyckas: fall tillbaka till regex."""
     try:
         root = ET.fromstring(xml_text)
+        poster = []
+        for item in root.iter():
+            tag = item.tag.split("}")[-1].lower()
+            if tag not in ("item", "entry"):
+                continue
+            titel = lank = publicerad = beskrivning = ""
+            for child in item:
+                ctag = child.tag.split("}")[-1].lower()
+                text = (child.text or "").strip()
+                if ctag == "title":
+                    titel = text
+                elif ctag == "link":
+                    lank = child.get("href") or text
+                elif ctag in ("pubdate", "published", "updated"):
+                    publicerad = parsa_datum(text)
+                elif ctag in ("description", "summary"):
+                    beskrivning = rensa_html(text)
+            if titel and lank:
+                poster.append({"titel": titel, "url": lank,
+                              "publicerad": publicerad, "beskrivning": beskrivning})
+        return poster
     except ET.ParseError as e:
-        print(f"  ! RSS-fel: {e}", file=sys.stderr)
-        return []
+        print(f"  ! XML-fel, byter till regex-lage: {e}", file=sys.stderr)
+        return parsa_rss_regex(xml_text)
+
+
+def parsa_rss_regex(xml_text):
+    """Fallback-parser med regex som klarar trasig XML."""
     poster = []
-    for item in root.iter():
-        tag = item.tag.split("}")[-1].lower()
-        if tag not in ("item", "entry"):
-            continue
-        titel = lank = publicerad = beskrivning = ""
-        for child in item:
-            ctag = child.tag.split("}")[-1].lower()
-            text = (child.text or "").strip()
-            if ctag == "title":
-                titel = text
-            elif ctag == "link":
-                lank = child.get("href") or text
-            elif ctag in ("pubdate", "published", "updated"):
-                publicerad = parsa_datum(text)
-            elif ctag in ("description", "summary"):
-                beskrivning = rensa_html(text)
+    items = re.findall(r"<item[^>]*>(.*?)</item>", xml_text, flags=re.S | re.I)
+    if not items:
+        items = re.findall(r"<entry[^>]*>(.*?)</entry>", xml_text, flags=re.S | re.I)
+    for it in items:
+        m_titel = re.search(r"<title[^>]*>(.*?)</title>", it, re.S | re.I)
+        m_lank = re.search(r"<link[^>]*>(.*?)</link>", it, re.S | re.I)
+        m_datum = re.search(r"<(?:pubDate|published|updated)[^>]*>(.*?)</(?:pubDate|published|updated)>", it, re.S | re.I)
+        m_desc = re.search(r"<description[^>]*>(.*?)</description>", it, re.S | re.I)
+        titel = m_titel.group(1) if m_titel else ""
+        lank = m_lank.group(1) if m_lank else ""
+        # Rensa CDATA-omslag
+        titel = re.sub(r"<!\[CDATA\[|\]\]>", "", titel).strip()
+        lank = re.sub(r"<!\[CDATA\[|\]\]>", "", lank).strip()
+        # Klipp bort ev inbaddade taggar i titel/lank
+        titel = re.sub(r"<[^>]+>", " ", titel)
+        titel = re.sub(r"\s+", " ", titel).strip()
+        lank = re.sub(r"<[^>]+>", " ", lank)
+        lank = re.sub(r"\s+", "", lank).strip()
+        publicerad = parsa_datum(m_datum.group(1).strip()) if m_datum else ""
+        beskrivning = rensa_html(m_desc.group(1)) if m_desc else ""
         if titel and lank:
             poster.append({"titel": titel, "url": lank,
                           "publicerad": publicerad, "beskrivning": beskrivning})
@@ -161,6 +191,7 @@ def main():
             except Exception as e:
                 print(f"  ! Fel: {e}", file=sys.stderr)
                 continue
+            print(f"  Hittade {len(poster)} poster i flodet")
             for post in poster:
                 dok_ident = dok_id(post["url"])
                 if dok_ident in kanda_ids:
