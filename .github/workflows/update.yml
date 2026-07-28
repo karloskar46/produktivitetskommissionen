@@ -28,7 +28,7 @@ jobs:
         run: python scripts/harvest_riksdagen.py
         continue-on-error: true
       - name: Skorda regeringen.se
-        run: python scripts/harvest_regeringen.py
+        # run: python scripts/harvest_regeringen.py
         continue-on-error: true
       - name: Skorda Statsliggaren
         run: python scripts/harvest_statsliggaren.py
