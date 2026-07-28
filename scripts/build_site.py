@@ -6,7 +6,7 @@ from datetime import date
 from pathlib import Path
 
 PROPOSALS_FIL = Path("data/proposals.json")
-UTDATA = Path("site/index.html")
+UTDATA = Path("docs/index.html")
 
 STATUS_LABEL = {
     "genomfort": ("Genomfort", "ok"),
