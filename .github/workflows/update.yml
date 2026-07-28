@@ -36,6 +36,7 @@ jobs:
       - name: Klassificera nya kallor
         env:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          PYTHONUNBUFFERED: "1"
         run: python scripts/classify.py
         continue-on-error: true
       - name: Bygg sajten
