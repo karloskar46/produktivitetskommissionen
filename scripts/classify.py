@@ -108,7 +108,7 @@ def hitta_kandidater(kalla, proposals, n=8):
 
 
 def anropa_gemini(prompt, api_nyckel):
-    time.sleep(4.5)
+    time.sleep(8)
     body = {"contents": [{"parts": [{"text": prompt}]}],
             "generationConfig": {"temperature": 0.1,
                                 "responseMimeType": "application/json"}}
