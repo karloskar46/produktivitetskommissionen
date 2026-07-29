@@ -13,9 +13,9 @@ KLASS_CACHE = Path("data/classified.json")
 GEMINI_MODEL = "gemini-2.0-flash"
 GEMINI_URL = f"https://generativelanguage.googleapis.com/v1beta/models/{GEMINI_MODEL}:generateContent"
 
-STOPPORD = {"och", "eller", "att", "for", "till", "med", "av", "pa", "i",
-            "en", "ett", "det", "den", "som", "ar", "har", "kan", "ska",
-            "bor", "vid", "fran", "om", "de", "inte", "over", "mellan",
+STOPPORD = {"och", "eller", "att", "för", "till", "med", "av", "på", "i",
+            "en", "ett", "det", "den", "som", "är", "har", "kan", "ska",
+            "bör", "vid", "från", "om", "de", "inte", "över", "mellan",
             "detta", "denna", "sin", "sitt", "sina"}
 
 BESLUTS_TYPER = {"prop", "bet", "sfs", "regleringsbrev",
@@ -89,7 +89,7 @@ def spara_klassificerat(ids):
 
 
 def tokenisera(text):
-    tokens = re.findall(r"\b[a-zaao]{4,}\b", (text or "").lower())
+    tokens = re.findall(r"\b[a-zåäö]{4,}\b", (text or "").lower())
     return {t for t in tokens if t not in STOPPORD}
 
 
@@ -110,6 +110,7 @@ def hitta_kandidater(kalla, proposals, n=8):
 
 
 def anropa_gemini(prompt, api_nyckel):
+    time.sleep(4.5)
     body = {"contents": [{"parts": [{"text": prompt}]}],
             "generationConfig": {"temperature": 0.1,
                                 "responseMimeType": "application/json"}}
@@ -187,7 +188,7 @@ def main():
     p_by_id = {p["id"]: p for p in proposals}
     nya_kallor = [k for k in kallor if k["id"] not in redan_klassade]
     print(f"[i] Nya kallor: {len(nya_kallor)}")
-    MAX = 50
+    MAX = 200
     if len(nya_kallor) > MAX:
         nya_kallor = nya_kallor[:MAX]
     antal = 0
