@@ -18,8 +18,6 @@ STOPPORD = {"och", "eller", "att", "för", "till", "med", "av", "på", "i",
             "bör", "vid", "från", "om", "de", "inte", "över", "mellan",
             "detta", "denna", "sin", "sitt", "sina"}
 
-BESLUTS_TYPER = {"prop", "bet", "sfs", "regleringsbrev",
-                "proposition", "lagradsremiss", "utskottsbetankande"}
 DELVIS_TYPER = {"dir", "direktiv"}
 
 PROMPT_MALL = """Du bedomer om ett svenskt politiskt dokument beror specifika forslag fran Produktivitetskommissionen (SOU 2024:29 och SOU 2025:96).
@@ -127,13 +125,17 @@ def anropa_gemini(prompt, api_nyckel):
                         return json.loads(m.group(0))
                     return None
             if r.status_code == 429:
+                print(f"    ! Rate limit 429, sover {20 * (forsok + 1)}s", flush=True)
                 time.sleep(20 * (forsok + 1))
                 continue
             if r.status_code >= 500:
+                print(f"    ! Server-fel {r.status_code}, sover 5s", flush=True)
                 time.sleep(5)
                 continue
+            print(f"    ! Ovantad status {r.status_code}: {r.text[:200]}", flush=True)
             return None
-        except httpx.RequestError:
+        except httpx.RequestError as e:
+            print(f"    ! Natfel: {e}", flush=True)
             if forsok == 2:
                 return None
             time.sleep(3)
@@ -187,18 +189,32 @@ def main():
     redan_klassade = las_klassificerat()
     p_by_id = {p["id"]: p for p in proposals}
     nya_kallor = [k for k in kallor if k["id"] not in redan_klassade]
-    print(f"[i] Nya kallor: {len(nya_kallor)}")
+    print(f"[i] Nya kallor totalt: {len(nya_kallor)}", flush=True)
+
     MAX = 200
     if len(nya_kallor) > MAX:
         nya_kallor = nya_kallor[:MAX]
+        print(f"[i] Bearbetar de forsta {MAX} denna korning", flush=True)
+
     antal = 0
+    tomma_kandidater = 0
+    tomma_svar_fran_gemini = 0
+
     for i, kalla in enumerate(nya_kallor, 1):
-        if i % 5 == 0:
-            print(f"  ... {i}/{len(nya_kallor)} ({antal} matchningar)")
         kandidater = hitta_kandidater(kalla, proposals, n=8)
+
         if not kandidater:
+            tomma_kandidater += 1
             redan_klassade.add(kalla["id"])
+            if i <= 5:
+                print(f"  [{i}] Inga kandidater for '{kalla.get('titel','')[:80]}'", flush=True)
+            if i % 5 == 0:
+                print(f"  ... {i}/{len(nya_kallor)} ({antal} matchningar, {tomma_kandidater} utan kandidater, {tomma_svar_fran_gemini} tomma Gemini-svar)", flush=True)
             continue
+
+        if i <= 5:
+            print(f"  [{i}] '{kalla.get('titel','')[:60]}' -> {len(kandidater)} kandidater", flush=True)
+
         kand_text = "\n".join(f"{n+1}. [{p['id']}] {p['text'][:220]}" for n, p in enumerate(kandidater))
         prompt = PROMPT_MALL.format(
             typ=kalla.get("typ_display", kalla.get("typ", "")),
@@ -207,9 +223,19 @@ def main():
             utdrag=(kalla.get("text_utdrag", "") or kalla.get("beskrivning", ""))[:2000],
             kandidater=kand_text)
         svar = anropa_gemini(prompt, api_nyckel)
+
         if not svar:
+            if i <= 5:
+                print(f"  [{i}] Inget svar fran Gemini", flush=True)
             continue
-        for m in svar.get("matchningar", []):
+
+        matchningar_i_svar = svar.get("matchningar", [])
+        if not matchningar_i_svar:
+            tomma_svar_fran_gemini += 1
+            if i <= 5:
+                print(f"  [{i}] Gemini svarade tomt (inga matchningar)", flush=True)
+
+        for m in matchningar_i_svar:
             fid = m.get("forslag_id", "").strip()
             rel = m.get("relation", "").lower()
             if rel == "ingen" or fid not in p_by_id:
@@ -230,8 +256,13 @@ def main():
                 bef.append(koppling)
                 p_by_id[fid]["kopplade_kallor"] = bef
                 antal += 1
+
         redan_klassade.add(kalla["id"])
-    print("[*] Raknar om status...")
+
+        if i % 5 == 0:
+            print(f"  ... {i}/{len(nya_kallor)} ({antal} matchningar, {tomma_kandidater} utan kandidater, {tomma_svar_fran_gemini} tomma Gemini-svar)", flush=True)
+
+    print("[*] Raknar om status...", flush=True)
     for p in proposals:
         status, mot = berakna_status(p.get("kopplade_kallor", []))
         p["status"] = status
@@ -241,10 +272,12 @@ def main():
     spara_klassificerat(redan_klassade)
     from collections import Counter
     c = Counter(p["status"] for p in proposals)
-    print(f"[OK] {antal} nya matchningar.")
+    print(f"[OK] {antal} nya matchningar. Sammanfattning:", flush=True)
+    print(f"    Utan kandidater: {tomma_kandidater}", flush=True)
+    print(f"    Tomma Gemini-svar: {tomma_svar_fran_gemini}", flush=True)
     for s in ("genomfort", "delvis_genomfort", "ej_genomfort", "ej_klassificerat"):
         n = c.get(s, 0)
-        print(f"  {s} {n}")
+        print(f"    {s}: {n}", flush=True)
 
 
 if __name__ == "__main__":
