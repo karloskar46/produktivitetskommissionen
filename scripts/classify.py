@@ -10,7 +10,7 @@ KALLOR = [Path("data/sources/riksdagen.jsonl"),
           Path("data/sources/regeringen.jsonl"),
           Path("data/sources/statsliggaren.jsonl")]
 KLASS_CACHE = Path("data/classified.json")
-GEMINI_MODEL = "gemini-flash-latest"
+GEMINI_MODEL = "gemini-2.5-flash"
 GEMINI_URL = f"https://generativelanguage.googleapis.com/v1beta/models/{GEMINI_MODEL}:generateContent"
 
 STOPPORD = {"och", "eller", "att", "för", "till", "med", "av", "på", "i",
