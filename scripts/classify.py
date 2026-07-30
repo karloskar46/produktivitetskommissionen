@@ -125,7 +125,7 @@ def anropa_gemini(prompt, api_nyckel):
                         return json.loads(m.group(0))
                     return None
             if r.status_code == 429:
-                print(f"    ! Rate limit 429, sover {20 * (forsok + 1)}s", flush=True)
+                print(f"    ! 429 svar. Body: {r.text[:500]}", flush=True)
                 time.sleep(20 * (forsok + 1))
                 continue
             if r.status_code >= 500:
