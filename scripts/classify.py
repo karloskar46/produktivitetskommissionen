@@ -184,12 +184,6 @@ def main():
     if not api_nyckel:
         print("! GEMINI_API_KEY saknas.", file=sys.stderr)
         sys.exit(1)
-    r = httpx.get(f"https://generativelanguage.googleapis.com/v1beta/models?key={api_nyckel}")
-    print("[DEBUG] Tillgangliga modeller for generateContent:", flush=True)
-    for m in r.json().get("models", []):
-        if "generateContent" in m.get("supportedGenerationMethods", []):
-            print(f"  - {m.get('name')}", flush=True)
-    sys.exit(0)
     proposals = las_proposals()
     kallor = las_kallor()
     redan_klassade = las_klassificerat()
